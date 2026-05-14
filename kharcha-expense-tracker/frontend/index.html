@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kharcha - Expense Tracker</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --card-bg: #16161e;
+      --accent: #ff6b35;
+      --secondary: #ffd166;
+      --green: #06d6a0;
+      --red: #ef476f;
+      --text: #ffffff;
+      --text-dim: #8b8b99;
+      --border: #2a2a35;
+      
+      --c-food: #ff9f1c; --c-transport: #2ec4b6; --c-shopping: #9d4edd;
+      --c-bills: #ffbf69; --c-health: #2d6a4f; --c-entertainment: #e63946;
+      --c-education: #52b788; --c-other: #6c757d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { background-color: #000; color: var(--text); font-family: 'DM Sans', sans-serif; display: flex; justify-content: center; min-height: 100vh; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Syne', sans-serif; }
+
+    #app { width: 100%; max-width: 430px; background-color: var(--bg); position: relative; height: 100vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    .main-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 90px; scrollbar-width: none; }
+    .main-content::-webkit-scrollbar { display: none; }
+
+    /* Nav */
+    .bottom-nav { position: absolute; bottom: 0; width: 100%; background: rgba(22, 22, 30, 0.95); backdrop-filter: blur(10px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 15px 0 calc(15px + env(safe-area-inset-bottom)); z-index: 100; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--text-dim); font-size: 12px; cursor: pointer; transition: color 0.3s; }
+    .nav-item.active { color: var(--accent); }
+    .nav-icon { font-size: 24px; }
+
+    /* Cards */
+    .card { background: var(--card-bg); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); animation: slideUp 0.4s ease-out; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .amount { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; margin: 10px 0; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .small-card { background: var(--card-bg); border-radius: 20px; padding: 15px; border: 1px solid var(--border); animation: slideUp 0.4s ease-out; }
+
+    /* Progress */
+    .progress-bg { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 10px; position: relative; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.5s ease; }
+    .progress-fill.danger { background: var(--red); }
+    .progress-fill.warning { background: var(--secondary); }
+    .progress-fill.success { background: var(--green); }
+
+    /* Buttons & Inputs */
+    .btn-primary { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: transform 0.1s; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-secondary { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: rgba(239, 71, 111, 0.1); border: 1px solid var(--red); color: var(--red); }
+    .btn-small { padding: 8px 15px; font-size: 14px; border-radius: 10px; }
+    input { width: 100%; background: var(--card-bg); border: 1px solid var(--border); color: white; padding: 15px; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 16px; outline: none; margin-bottom: 15px; }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+    
+    /* Fab */
+    .fab { position: absolute; bottom: 85px; right: 20px; width: 60px; height: 60px; background: var(--accent); border-radius: 30px; display: flex; justify-content: center; align-items: center; font-size: 30px; color: white; box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4); cursor: pointer; z-index: 100; border: none; }
+
+    /* Expense Item */
+    .expense-wrapper { position: relative; margin-bottom: 10px; border-radius: 15px; overflow: hidden; }
+    .expense-actions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--border); display: flex; justify-content: flex-end; align-items: center; }
+    .action-btn { height: 100%; padding: 0 20px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer; }
+    .btn-edit { background: var(--secondary); color: #000; }
+    .btn-del { background: var(--red); }
+    .expense-item { background: var(--card-bg); padding: 15px; border-radius: 15px; display: flex; align-items: center; gap: 15px; position: relative; z-index: 2; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 1px solid var(--border); }
+    .expense-icon { width: 45px; height: 45px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 24px; background: rgba(255,255,255,0.05); }
+    .expense-details { flex: 1; min-width: 0; }
+    .expense-title { font-weight: 500; font-size: 16px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .expense-meta { display: flex; gap: 10px; font-size: 12px; color: var(--text-dim); }
+    .expense-amount { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 16px; white-space: nowrap; }
+
+    /* Badges & Pills */
+    .badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; text-transform: uppercase; cursor: pointer; }
+    .filter-pills { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 15px; scrollbar-width: none; }
+    .filter-pills::-webkit-scrollbar { display: none; }
+    .pill { background: var(--card-bg); border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; white-space: nowrap; font-size: 14px; cursor: pointer; color: var(--text-dim); }
+    .pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    /* Bottom Sheet */
+    .sheet-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+    .sheet { width: 100%; background: var(--bg); border-radius: 30px 30px 0 0; padding: 30px 20px calc(30px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1); max-height: 90vh; overflow-y: auto; border-top: 1px solid var(--border); }
+    .sheet-overlay.open .sheet { transform: translateY(0); }
+    .sheet-handle { width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 20px; }
+
+    /* Auth Screen */
+    .auth-tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .auth-tab { flex: 1; text-align: center; padding: 15px; color: var(--text-dim); cursor: pointer; font-weight: 500; }
+    .auth-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+
+    /* Grid */
+    .cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+    .cat-btn { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 5px; display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--text-dim); cursor: pointer; }
+    .cat-btn.selected { background: rgba(255, 107, 53, 0.1); border-color: var(--accent); color: white; }
+
+    /* Misc */
+    .toast { position: absolute; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: var(--card-bg); border: 1px solid var(--border); padding: 12px 20px; border-radius: 30px; font-size: 14px; color: white; z-index: 300; transition: transform 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .warning-banner { background: rgba(239, 71, 111, 0.1); border: 1px solid var(--red); color: var(--red); padding: 10px 15px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+    .skeleton { background: linear-gradient(90deg, var(--card-bg) 25%, var(--border) 50%, var(--card-bg) 75%); background-size: 200% 100%; animation: load 1.5s infinite; border-radius: 8px; }
+    @keyframes load { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const API_URL = 'http://localhost:3001/api';
+
+    const CATEGORIES = [
+      { id: 'food', label: 'Food', emoji: '🍕', color: 'var(--c-food)' },
+      { id: 'transport', label: 'Transport', emoji: '🚌', color: 'var(--c-transport)' },
+      { id: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'var(--c-shopping)' },
+      { id: 'bills', label: 'Bills', emoji: '⚡', color: 'var(--c-bills)' },
+      { id: 'health', label: 'Health', emoji: '💊', color: 'var(--c-health)' },
+      { id: 'entertainment', label: 'Fun', emoji: '🎮', color: 'var(--c-entertainment)' },
+      { id: 'education', label: 'Study', emoji: '📚', color: 'var(--c-education)' },
+      { id: 'other', label: 'Other', emoji: '📦', color: 'var(--c-other)' }
+    ];
+    const getCategory = id => CATEGORIES.find(c => c.id === id) || CATEGORIES[7];
+    const formatCur = amt => new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(amt || 0);
+
+    // --- API WRAPPER ---
+    const fetchApi = async (path, options = {}) => {
+      const token = localStorage.getItem('kharcha_token');
+      const headers = { 'Content-Type': 'application/json', ...options.headers };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      
+      const res = await fetch(API_URL + path, { ...options, headers });
+      if (res.status === 401 && path !== '/auth/login' && path !== '/auth/register') {
+        localStorage.removeItem('kharcha_token');
+        window.location.reload();
+      }
+      return res;
+    };
+
+    // --- COMPONENTS ---
+    const Toast = ({ msg, type, show }) => (
+      <div className={`toast ${show ? 'show' : ''}`}>
+        {type==='error'?'❌':type==='success'?'✅':'ℹ️'} {msg}
+      </div>
+    );
+
+    const SwipeableItem = ({ expense, onEdit, onDelete }) => {
+      const [offset, setOffset] = useState(0);
+      const startX = useRef(0);
+      const isDrag = useRef(false);
+      const cat = getCategory(expense.category);
+
+      const onTouchStart = e => { startX.current = e.touches[0].clientX; isDrag.current = true; };
+      const onTouchMove = e => {
+        if (!isDrag.current) return;
+        const diff = e.touches[0].clientX - startX.current;
+        if (diff < 0 && diff > -160) setOffset(diff); // Max swipe 160px
+      };
+      const onTouchEnd = () => {
+        isDrag.current = false;
+        if (offset < -80) setOffset(-140); // Snap open
+        else setOffset(0); // Snap close
+      };
+
+      return (
+        <div className="expense-wrapper">
+          <div className="expense-actions">
+            <div className="action-btn btn-edit" onClick={() => {setOffset(0); onEdit(expense);}}>Edit ✏️</div>
+            <div className="action-btn btn-del" onClick={() => onDelete(expense.id)}>Del 🗑️</div>
+          </div>
+          <div className="expense-item" style={{ transform: `translateX(${offset}px)` }}
+               onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+            <div className="expense-icon" style={{ color: cat.color }}>{cat.emoji}</div>
+            <div className="expense-details">
+              <div className="expense-title">{expense.description}</div>
+              <div className="expense-meta">
+                <span className="badge" style={{ backgroundColor: `${cat.color}20`, color: cat.color }}>{cat.label}</span>
+                <span>{new Date(expense.date).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</span>
+              </div>
+            </div>
+            <div className="expense-amount" style={{ color: cat.color }}>₨ {formatCur(expense.amount)}</div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- SCREENS ---
+
+    const AuthScreen = ({ onLogin, showToast }) => {
+      const [isLogin, setIsLogin] = useState(true);
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [username, setUsername] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [apiError, setApiError] = useState('');
+
+      const submit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setApiError('');
+        try {
+          const path = isLogin ? '/auth/login' : '/auth/register';
+          const body = isLogin ? { email, password } : { username, email, password };
+          const res = await fetchApi(path, { method: 'POST', body: JSON.stringify(body) });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          
+          localStorage.setItem('kharcha_token', data.token);
+          onLogin(data.user);
+          showToast(`Welcome ${data.user.username}!`, 'success');
+        } catch (err) {
+          setApiError(err.message);
+          showToast(err.message, 'error');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="main-content" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <h1 style={{ textAlign: 'center', marginBottom: '10px', color: 'var(--accent)' }}>Kharcha</h1>
+          <p style={{ textAlign: 'center', color: 'var(--text-dim)', marginBottom: '30px' }}>Your Personal Expense Tracker</p>
+          
+          <div className="card">
+            <div className="auth-tabs">
+              <div className={`auth-tab ${isLogin ? 'active' : ''}`} onClick={() => { setIsLogin(true); setApiError(''); }}>Login</div>
+              <div className={`auth-tab ${!isLogin ? 'active' : ''}`} onClick={() => { setIsLogin(false); setApiError(''); }}>Register</div>
+            </div>
+            
+            {apiError && <div className="warning-banner" style={{marginBottom:'15px'}}>⚠️ {apiError}</div>}
+            
+            <form onSubmit={submit}>
+              {!isLogin && <input type="text" placeholder="Username" value={username} onChange={e=>setUsername(e.target.value)} required />}
+              <input type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} required />
+              <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} required />
+              <button type="submit" className="btn-primary" disabled={loading}>{loading ? '...' : isLogin ? 'Login' : 'Create Account'}</button>
+            </form>
+          </div>
+        </div>
+      );
+    };
+
+    const HomeScreen = ({ user, stats, loading, expenses, onEdit, onDelete }) => {
+      const chartRef = useRef(null);
+      const chartInst = useRef(null);
+
+      useEffect(() => {
+        if (!loading && stats && chartRef.current) {
+          if (chartInst.current) chartInst.current.destroy();
+          const ctx = chartRef.current.getContext('2d');
+          chartInst.current = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: stats.dailySpending.slice().reverse().map(d => new Date(d.date).toLocaleDateString('en-GB', {day:'numeric', month:'short'})),
+              datasets: [{ data: stats.dailySpending.slice().reverse().map(d => d.total), backgroundColor: 'rgba(255, 107, 53, 0.8)', borderRadius: 4 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+          });
+        }
+      }, [stats, loading]);
+
+      if (loading || !stats) return <div className="main-content"><div className="skeleton" style={{height:'150px'}}/><div className="skeleton" style={{height:'200px', marginTop:'15px'}}/></div>;
+
+      const dailyLimit = stats.budget?.daily_limit || 2000;
+      const monthlyLimit = stats.budget?.monthly_limit || 50000;
+      const dPct = Math.min(100, (stats.todayTotal / dailyLimit) * 100) || 0;
+      const mPct = Math.min(100, (stats.monthTotal / monthlyLimit) * 100) || 0;
+      const dExc = stats.todayTotal > dailyLimit;
+      const mExc = stats.monthTotal > monthlyLimit;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayExpenses = expenses.filter(e => e.date === todayStr);
+
+      return (
+        <div className="main-content">
+          <div style={{marginBottom: '20px'}}>
+            <div style={{color:'var(--text-dim)', fontSize:'14px'}}>Asalam o Alaikum,</div>
+            <h2>{user.username}! 👋</h2>
+          </div>
+
+          {(dExc || mExc) && (
+            <div className="warning-banner">⚠️ Budget Exceeded! {dExc?'Daily':'Monthly'} limit reached.</div>
+          )}
+
+          <div className="card">
+            <div className="flex-between">
+              <span style={{color:'var(--text-dim)'}}>Today's Spend</span>
+              <span className="badge" style={{background:'rgba(255,255,255,0.1)'}}>₨ {formatCur(dailyLimit)} limit</span>
+            </div>
+            <div className="amount">₨ {formatCur(stats.todayTotal)}</div>
+            <div className="progress-bg">
+              <div className={`progress-fill ${dExc?'danger':dPct>80?'warning':''}`} style={{width:`${dPct}%`}}></div>
+            </div>
+          </div>
+
+          <div className="grid-2">
+            <div className="small-card">
+              <div style={{color:'var(--text-dim)', fontSize:'12px'}}>This Week</div>
+              <div style={{fontFamily:'Syne', fontWeight:'700', fontSize:'20px'}}>₨ {formatCur(stats.weekTotal)}</div>
+            </div>
+            <div className="small-card">
+              <div style={{color:'var(--text-dim)', fontSize:'12px'}}>This Month</div>
+              <div style={{fontFamily:'Syne', fontWeight:'700', fontSize:'20px'}}>₨ {formatCur(stats.monthTotal)}</div>
+              <div className="progress-bg" style={{height:'4px'}}><div className={`progress-fill ${mExc?'danger':mPct>80?'warning':''}`} style={{width:`${mPct}%`}}></div></div>
+            </div>
+          </div>
+
+          <div className="card" style={{marginTop:'15px'}}>
+            <div className="flex-between" style={{marginBottom:'10px'}}>
+              <span style={{fontSize:'14px', color:'var(--text-dim)'}}>Last 14 Days</span>
+              {stats.topCategory.name && <span className="badge" style={{background:'rgba(255,255,255,0.1)'}}>🏆 {getCategory(stats.topCategory.name).emoji} Top</span>}
+            </div>
+            <div style={{height:'120px'}}><canvas ref={chartRef}></canvas></div>
+          </div>
+
+          <h3 style={{marginBottom:'15px', fontFamily:'Syne'}}>Today's Expenses</h3>
+          {todayExpenses.length === 0 ? <div className="empty-state">No expenses today! 🎉</div> : todayExpenses.map(e => <SwipeableItem key={e.id} expense={e} onEdit={onEdit} onDelete={onDelete} />)}
+        </div>
+      );
+    };
+
+    const HistoryScreen = ({ onEdit, onDelete, showToast }) => {
+      const [expenses, setExpenses] = useState([]);
+      const [search, setSearch] = useState('');
+      const [cat, setCat] = useState('');
+      const [from, setFrom] = useState('');
+      const [to, setTo] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [page, setPage] = useState(1);
+      const limit = 20;
+
+      const fetchExp = async () => {
+        setLoading(true);
+        try {
+          let q = `?from=${from}&to=${to}`;
+          if (cat) q += `&category=${cat}`;
+          const res = await fetchApi(`/expenses${q}`);
+          const data = await res.json();
+          if(res.ok) setExpenses(data);
+        } catch(e) { showToast(e.message, 'error'); }
+        setLoading(false);
+      };
+
+      useEffect(() => { fetchExp(); setPage(1); }, [cat, from, to]);
+
+      const filtered = expenses.filter(e => e.description.toLowerCase().includes(search.toLowerCase()));
+      const paginated = filtered.slice(0, page * limit);
+
+      const downloadCSV = () => {
+        const t = localStorage.getItem('kharcha_token');
+        window.location.href = `${API_URL}/expenses/export/csv?token=${t}`;
+      };
+
+      return (
+        <div className="main-content">
+          <div className="flex-between" style={{marginBottom:'15px'}}>
+            <h2>History</h2>
+            <button onClick={downloadCSV} className="badge" style={{background:'var(--accent)', color:'white', border:'none', padding:'6px 12px'}}>Export CSV</button>
+          </div>
+          
+          <input type="text" placeholder="Search expenses..." value={search} onChange={e=>setSearch(e.target.value)} />
+          
+          <div className="grid-2" style={{marginBottom:'15px'}}>
+            <input type="date" value={from} onChange={e=>setFrom(e.target.value)} />
+            <input type="date" value={to} onChange={e=>setTo(e.target.value)} />
+          </div>
+
+          <div className="filter-pills">
+            <div className={`pill ${cat===''?'active':''}`} onClick={()=>setCat('')}>All</div>
+            {CATEGORIES.map(c => <div key={c.id} className={`pill ${cat===c.id?'active':''}`} onClick={()=>setCat(c.id)}>{c.emoji} {c.label}</div>)}
+          </div>
+
+          {loading ? <div className="skeleton" style={{height:'80px', marginBottom:'10px'}}/> : paginated.length === 0 ? <div className="empty-state">No records found</div> : paginated.map(e => (
+            <SwipeableItem key={e.id} expense={e} onEdit={onEdit} onDelete={async (id)=>{ await onDelete(id); fetchExp(); }} />
+          ))}
+
+          {paginated.length < filtered.length && (
+            <button className="btn-primary btn-secondary" style={{marginTop:'10px'}} onClick={()=>setPage(p=>p+1)}>Load More</button>
+          )}
+        </div>
+      );
+    };
+
+    const AnalyticsScreen = ({ stats, fetchStats, showToast }) => {
+      const lineChartRef = useRef(null);
+      const lineInst = useRef(null);
+
+      useEffect(() => {
+        if (stats && lineChartRef.current) {
+          if (lineInst.current) lineInst.current.destroy();
+          const ctx = lineChartRef.current.getContext('2d');
+          lineInst.current = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: stats.monthlyTrend.slice().reverse().map(d => {
+                const parts = d.month.split('-');
+                return new Date(parts[0], parts[1]-1).toLocaleDateString('en-GB', {month:'short'});
+              }),
+              datasets: [{ data: stats.monthlyTrend.slice().reverse().map(d => d.total), borderColor: '#06d6a0', tension: 0.3, fill: true, backgroundColor: 'rgba(6, 214, 160, 0.1)' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid:{display:false} }, y: { display: false } } }
+          });
+        }
+      }, [stats]);
+
+      if(!stats) return <div className="main-content"><div className="skeleton" style={{height:'300px'}}/></div>;
+
+      const total = stats.monthTotal || 1;
+      const cats = Object.entries(stats.categoryTotals).map(([id, amount]) => ({ ...getCategory(id), amount })).sort((a,b)=>b.amount-a.amount);
+
+      const addGoal = async () => {
+        const title = prompt("Goal Title:");
+        if (!title) return;
+        const amt = prompt("Target Amount:");
+        if (!amt || isNaN(amt)) return;
+        try {
+          await fetchApi('/goals', { method: 'POST', body: JSON.stringify({title, target_amount: parseFloat(amt)}) });
+          fetchStats(); showToast('Goal added!', 'success');
+        } catch(e) { showToast(e.message, 'error'); }
+      };
+
+      const updateGoal = async (id, currentSaved) => {
+        const amt = prompt("Add amount to saved:", "0");
+        if(amt && !isNaN(amt)) {
+          const newAmt = parseFloat(currentSaved) + parseFloat(amt);
+          await fetchApi(`/goals/${id}`, { method: 'PUT', body: JSON.stringify({saved_amount: newAmt}) });
+          fetchStats(); showToast('Goal updated!', 'success');
+        }
+      };
+
+      const addRecurring = async () => {
+        const description = prompt("Description:");
+        if (!description) return;
+        const amount = prompt("Amount:");
+        if (!amount || isNaN(amount)) return;
+        try {
+          // simplified addition for prompt workflow
+          await fetchApi('/recurring', { method: 'POST', body: JSON.stringify({description, amount: parseFloat(amount), category: 'bills', frequency: 'Monthly', next_due: new Date().toISOString().split('T')[0]}) });
+          fetchStats(); showToast('Recurring expense added!', 'success');
+        } catch(e) { showToast(e.message, 'error'); }
+      };
+
+      const delRecurring = async (id) => {
+        if(confirm("Delete recurring expense?")) { await fetchApi(`/recurring/${id}`, {method:'DELETE'}); fetchStats(); }
+      };
+
+      return (
+        <div className="main-content">
+          <h2 style={{marginBottom:'20px'}}>Analytics</h2>
+          
+          <div className="card" style={{padding:'15px', height:'160px'}}>
+            <div style={{fontSize:'14px', color:'var(--text-dim)', marginBottom:'10px'}}>6 Months Trend</div>
+            <canvas ref={lineChartRef}></canvas>
+          </div>
+
+          <div className="card">
+            <h3 style={{marginBottom:'15px', fontFamily:'Syne'}}>This Month Breakdown</h3>
+            {cats.length === 0 ? <div className="empty-state">No expenses this month</div> : cats.map((c, i) => {
+              const pct = (c.amount/total)*100;
+              return (
+                <div key={c.id} style={{marginBottom: i===cats.length-1?0:'15px'}}>
+                  <div className="flex-between" style={{fontSize:'14px', marginBottom:'4px'}}>
+                    <span>{c.emoji} {c.label}</span>
+                    <span style={{fontWeight:'bold'}}>₨ {formatCur(c.amount)}</span>
+                  </div>
+                  <div className="progress-bg"><div className="progress-fill" style={{width:`${pct}%`, background:c.color}}></div></div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex-between" style={{marginTop:'25px', marginBottom:'15px'}}>
+            <h3 style={{fontFamily:'Syne'}}>Savings Goals</h3>
+            <button onClick={addGoal} className="badge btn-primary btn-small" style={{width:'auto'}}>+ Add</button>
+          </div>
+          {stats.savingsGoals.length === 0 ? <div className="empty-state">No goals set yet.</div> : stats.savingsGoals.map(g => {
+            const pct = Math.min(100, (g.saved_amount/g.target_amount)*100);
+            return (
+              <div key={g.id} className="card" style={{padding:'15px'}}>
+                <div className="flex-between">
+                  <span style={{fontWeight:'bold'}}>{g.title}</span>
+                  <span onClick={async()=>{ if(confirm('Delete goal?')) { await fetchApi(`/goals/${g.id}`, {method:'DELETE'}); fetchStats(); } }} style={{cursor:'pointer'}}>❌</span>
+                </div>
+                <div style={{color:'var(--text-dim)', fontSize:'12px', margin:'5px 0'}}>₨ {formatCur(g.saved_amount)} / ₨ {formatCur(g.target_amount)}</div>
+                <div className="progress-bg" onClick={()=>updateGoal(g.id, g.saved_amount)} style={{cursor:'pointer', height:'10px'}}>
+                  <div className={`progress-fill ${pct>=100?'success':''}`} style={{width:`${pct}%`}}></div>
+                </div>
+              </div>
+            )
+          })}
+
+          <div className="flex-between" style={{marginTop:'25px', marginBottom:'15px'}}>
+            <h3 style={{fontFamily:'Syne'}}>Recurring Expenses</h3>
+            <button onClick={addRecurring} className="badge btn-primary btn-small" style={{width:'auto'}}>+ Add</button>
+          </div>
+          {stats.recurringExpenses.length === 0 ? <div className="empty-state">No recurring expenses.</div> : stats.recurringExpenses.map(r => (
+            <div key={r.id} className="card flex-between" style={{padding:'15px'}}>
+              <div>
+                <div style={{fontWeight:'bold'}}>{r.description}</div>
+                <div style={{fontSize:'12px', color:'var(--text-dim)'}}>Due: {r.next_due}</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontWeight:'bold', color:'var(--red)'}}>₨ {formatCur(r.amount)}</div>
+                <span style={{fontSize:'12px', cursor:'pointer'}} onClick={()=>delRecurring(r.id)}>🗑️ Del</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    const ProfileScreen = ({ user, stats, fetchStats, showToast }) => {
+      const [ml, setMl] = useState('');
+      const [dl, setDl] = useState('');
+
+      useEffect(() => { if(stats?.budget) { setMl(stats.budget.monthly_limit); setDl(stats.budget.daily_limit); } }, [stats]);
+
+      const saveBudget = async () => {
+        try {
+          await fetchApi('/budget', { method: 'PUT', body: JSON.stringify({monthly_limit: ml, daily_limit: dl}) });
+          showToast('Budget saved!', 'success');
+          fetchStats();
+        } catch(e) { showToast(e.message, 'error'); }
+      };
+
+      const logout = () => { localStorage.removeItem('kharcha_token'); window.location.reload(); };
+
+      if(!stats) return <div className="main-content" />;
+
+      return (
+        <div className="main-content">
+          <h2 style={{marginBottom:'20px'}}>Profile</h2>
+          <div className="card" style={{textAlign:'center'}}>
+            <div className="expense-icon" style={{margin:'0 auto 10px', width:'60px', height:'60px', fontSize:'30px', background:'var(--accent)'}}>👤</div>
+            <h3>{user.username}</h3>
+            <p style={{color:'var(--text-dim)', fontSize:'14px'}}>{user.email}</p>
+          </div>
+
+          <div className="grid-2">
+            <div className="small-card text-center">
+              <div style={{fontSize:'12px', color:'var(--text-dim)'}}>Total Entries</div>
+              <div style={{fontSize:'24px', fontFamily:'Syne', fontWeight:'bold'}}>{stats.accountStats.totalExpensesCount}</div>
+            </div>
+            <div className="small-card text-center">
+              <div style={{fontSize:'12px', color:'var(--text-dim)'}}>Spent All Time</div>
+              <div style={{fontSize:'20px', fontFamily:'Syne', fontWeight:'bold', color:'var(--red)'}}>₨ {formatCur(stats.accountStats.totalSpentAllTime)}</div>
+            </div>
+          </div>
+          <div style={{textAlign:'center', color:'var(--text-dim)', fontSize:'12px', marginTop:'10px'}}>
+            Member since: {new Date(stats.accountStats.memberSince).toLocaleDateString()}
+          </div>
+
+          <div className="card" style={{marginTop:'15px'}}>
+            <h3 style={{marginBottom:'15px', fontFamily:'Syne'}}>Budget Settings</h3>
+            <label style={{fontSize:'12px', color:'var(--text-dim)'}}>Monthly Limit (₨)</label>
+            <input type="number" value={ml} onChange={e=>setMl(e.target.value)} />
+            <label style={{fontSize:'12px', color:'var(--text-dim)'}}>Daily Limit (₨)</label>
+            <input type="number" value={dl} onChange={e=>setDl(e.target.value)} />
+            <button className="btn-primary btn-secondary" onClick={saveBudget}>Save Budget</button>
+          </div>
+
+          <button className="btn-primary btn-danger" style={{marginTop:'20px'}} onClick={logout}>Log Out</button>
+        </div>
+      );
+    };
+
+    const App = () => {
+      const [user, setUser] = useState(null);
+      const [loadingUser, setLoadingUser] = useState(true);
+      const [tab, setTab] = useState('home');
+      const [stats, setStats] = useState(null);
+      const [allExpenses, setAllExpenses] = useState([]);
+      const [toast, setToast] = useState({show: false, msg: '', type: 'success'});
+      
+      const [sheetOpen, setSheetOpen] = useState(false);
+      const [editExp, setEditExp] = useState(null);
+      
+      const [amt, setAmt] = useState(''); const [desc, setDesc] = useState('');
+      const [cat, setCat] = useState('food'); const [date, setDate] = useState('');
+      const [note, setNote] = useState('');
+
+      const showToast = (msg, type='success') => { setToast({show:true, msg, type}); setTimeout(()=>setToast({show:false, msg:'', type}), 3000); };
+
+      const loadMe = async () => {
+        if(!localStorage.getItem('kharcha_token')) return setLoadingUser(false);
+        try {
+          const res = await fetchApi('/auth/me');
+          if(res.ok) { const d = await res.json(); setUser(d.user); }
+          else localStorage.removeItem('kharcha_token');
+        } catch(e) {}
+        setLoadingUser(false);
+      };
+
+      const fetchStats = async () => {
+        if(!user) return;
+        try { 
+          const [sRes, eRes] = await Promise.all([ fetchApi('/stats'), fetchApi('/expenses') ]);
+          if(sRes.ok) setStats(await sRes.json()); 
+          if(eRes.ok) setAllExpenses(await eRes.json());
+        } catch(e){}
+      };
+
+      useEffect(() => { loadMe(); }, []);
+      useEffect(() => { if(user) fetchStats(); }, [user]);
+
+      const openAdd = () => { setEditExp(null); setAmt(''); setDesc(''); setCat('food'); setDate(new Date().toISOString().split('T')[0]); setNote(''); setSheetOpen(true); };
+      const openEdit = (exp) => { setEditExp(exp); setAmt(exp.amount); setDesc(exp.description); setCat(exp.category); setDate(exp.date); setNote(exp.note); setSheetOpen(true); };
+
+      const saveExp = async (e) => {
+        e.preventDefault();
+        try {
+          const body = JSON.stringify({ amount: parseFloat(amt), description: desc, category: cat, date, note });
+          const res = editExp ? await fetchApi(`/expenses/${editExp.id}`, { method:'PUT', body }) : await fetchApi('/expenses', { method:'POST', body });
+          if(!res.ok) throw new Error('Failed to save');
+          setSheetOpen(false);
+          fetchStats();
+          showToast(editExp ? 'Updated!' : 'Saved!');
+        } catch(err) { showToast(err.message, 'error'); }
+      };
+
+      const delExp = async (id) => {
+        try { 
+          const res = await fetchApi(`/expenses/${id}`, {method:'DELETE'}); 
+          if(!res.ok) throw new Error('Delete failed');
+          fetchStats(); showToast('Deleted'); 
+        } catch(e) { showToast(e.message, 'error'); }
+      };
+
+      if (loadingUser) return <div style={{background:'var(--bg)', height:'100vh'}} />;
+      if (!user) return <><Toast {...toast} /><AuthScreen onLogin={setUser} showToast={showToast} /></>;
+
+      return (
+        <>
+          <Toast {...toast} />
+          
+          {tab === 'home' && <HomeScreen user={user} stats={stats} loading={!stats} expenses={allExpenses} onEdit={openEdit} onDelete={delExp} />}
+          {tab === 'history' && <HistoryScreen onEdit={openEdit} onDelete={delExp} showToast={showToast} />}
+          {tab === 'analytics' && <AnalyticsScreen stats={stats} fetchStats={fetchStats} showToast={showToast} />}
+          {tab === 'profile' && <ProfileScreen user={user} stats={stats} fetchStats={fetchStats} showToast={showToast} />}
+
+          {tab !== 'profile' && <button className="fab" onClick={openAdd}>+</button>}
+
+          <div className="bottom-nav">
+            <div className={`nav-item ${tab==='home'?'active':''}`} onClick={()=>setTab('home')}><span className="nav-icon">🏠</span><span>Home</span></div>
+            <div className={`nav-item ${tab==='history'?'active':''}`} onClick={()=>setTab('history')}><span className="nav-icon">📋</span><span>History</span></div>
+            <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={()=>setTab('analytics')}><span className="nav-icon">📊</span><span>Analytics</span></div>
+            <div className={`nav-item ${tab==='profile'?'active':''}`} onClick={()=>setTab('profile')}><span className="nav-icon">👤</span><span>Profile</span></div>
+          </div>
+
+          <div className={`sheet-overlay ${sheetOpen?'open':''}`} onClick={e=>{if(e.target.className.includes('overlay')) setSheetOpen(false)}}>
+            <div className="sheet">
+              <div className="sheet-handle"></div>
+              <h3 style={{textAlign:'center', marginBottom:'20px', fontFamily:'Syne'}}>{editExp ? 'Edit Expense' : 'Add Expense'}</h3>
+              <form onSubmit={saveExp}>
+                <div style={{display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'20px'}}>
+                  <span style={{fontSize:'30px', color:'var(--text-dim)', marginRight:'10px'}}>₨</span>
+                  <input type="number" value={amt} onChange={e=>setAmt(e.target.value)} required style={{background:'transparent', border:'none', fontSize:'48px', fontFamily:'Syne', fontWeight:'bold', width:'100%', padding:0, margin:0, color:'white'}} placeholder="0" />
+                </div>
+                <input type="text" placeholder="Description" value={desc} onChange={e=>setDesc(e.target.value)} required />
+                <div className="cat-grid">
+                  {CATEGORIES.map(c => (
+                    <div key={c.id} className={`cat-btn ${cat===c.id?'selected':''}`} onClick={()=>setCat(c.id)}>
+                      <span style={{fontSize:'24px'}}>{c.emoji}</span><span style={{fontSize:'10px'}}>{c.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <input type="date" value={date} onChange={e=>setDate(e.target.value)} required />
+                <input type="text" placeholder="Note (Optional)" value={note} onChange={e=>setNote(e.target.value)} />
+                <button type="submit" className="btn-primary" style={{background:'var(--accent)'}}>{editExp?'Update':'Add'} Expense</button>
+              </form>
+            </div>
+          </div>
+        </>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('app'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
