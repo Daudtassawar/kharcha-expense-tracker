@@ -1,0 +1,24 @@
+HOW TO MAKE YOUR KHARCHA APK:
+
+1. Install Capacitor: 
+   npm install @capacitor/core @capacitor/cli
+
+2. Init:
+   npx cap init "Kharcha" "com.daud.kharcha" --web-dir .
+
+3. Add Android:
+   npm install @capacitor/android
+   npx cap add android
+
+4. Config:
+   Edit capacitor.config.json and set "url" to your Render link.
+
+5. Build:
+   npx cap copy
+   npx cap sync
+   npx cap open android
+
+6. In Android Studio:
+   Build > Build APK.
+
+FULL GUIDE IS IN THE ARTIFACTS AND README.
