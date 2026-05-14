@@ -25,11 +25,11 @@ app.use('/api/goals', goalsRouter);
 app.use('/api/recurring', recurringRouter);
 
 // Serve static frontend files
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(__dirname));
 
 // Root route - Serve the frontend index.html
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Start server
