@@ -1,5 +1,10 @@
 {
   "appId": "com.daud.kharcha",
   "appName": "Kharcha",
-  "webDir": "."
+  "webDir": "www",
+  "server": {
+    "url": "https://kharcha-expense-tracker-dtai.onrender.com",
+    "cleartext": true,
+    "androidScheme": "https"
+  }
 }
