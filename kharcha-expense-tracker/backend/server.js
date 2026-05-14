@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 // Import route modules
 const { authRouter } = require('./auth');
@@ -23,9 +24,12 @@ app.use('/api/budget', budgetRouter);
 app.use('/api/goals', goalsRouter);
 app.use('/api/recurring', recurringRouter);
 
-// Root route welcome message
-app.get('/', (req, res) => {
-  res.send('<h1>✅ Kharcha Backend is Running</h1><p>Please open <b>frontend/index.html</b> in your browser to use the app.</p>');
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Root route - Serve the frontend index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 // Start server
