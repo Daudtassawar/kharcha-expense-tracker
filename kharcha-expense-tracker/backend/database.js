@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Pool } = require('pg');
 
 // Use the DATABASE_URL provided by Render/Neon
